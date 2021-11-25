@@ -45,6 +45,8 @@ Implement a mini virtual memory system simulator.
 
 - The framework will look up TLB by calling `lookup_tlb()` first. If the translation exists in the TLB, the framework will use the cached mapping without going through the page table. Otherwise, the framework will translate the mapping by walking down the page table. The translation result will be asked to be inserted into the TLB by calling `insert_tlb()`.
 
+- For the brevity of practice, the current TLB in the framework does not check the permission for page accesses. You may assume that the testcases for TLB implementation always make page accesses with proper permissions.
+
 - If the given VPN cannot be translated or accessed using the current page table, it will trigger the page fault mechanism in the framework by calling `handle_page_fault()`. In this page fault handler, your code should inspect the situation causing the page fault, and resolve the fault if it can handle with. To this end, you may modify/allocate/fix up the page table in this function.
 
 - You may switch the currently running process with `switch` command. Enter the command followed by the process id to switch to. The framework will call `switch_process()` to handle the request. Find the target process from the `processes` list, and if it exists, do the context switching by replacing `current` and `ptbr` with the requested process.
@@ -53,6 +55,24 @@ Implement a mini virtual memory system simulator.
 To duplicate the parent's address space, set up the PTE in the child's page table to map to the same PFN of the parent. You need to set up PTE property bits to support copy-on-write.
 
 - `show` prompt command shows the page table of the current process. `pages` command shows the summary for `mapcounts[]`. `tlb` shows currently valid TLB entries.
+
+- Running the simulator with `-t` option will print out the TLB translation result in the address translation.
+  ```
+  # Running simulator without `-t` option
+  $ ./vm
+  ...
+  >> read 1
+    1 --> 0
+  >>
+
+  # Running simulator with `-t` option
+  $ ./vm -t
+  ...
+  >> read 1
+  x |   1 --> 0     # `x` implies the TLB miss
+  >> read 1
+  o |   1 --> 0     # `o` implies the TLB hit
+  ```
 
 
 ### Tips and Restriction
@@ -63,14 +83,14 @@ To duplicate the parent's address space, set up the PTE in the child's page tabl
 
 ### Submission / Grading
 - Use [PAsubmit](https://sslab.ajou.ac.kr/pasubmit) for submission
-	- 550 pts + 10 pts
+	- 600 pts + 10 pts
 
-- Code: ***pa3.c*** (450 pts)
+- Code: ***pa3.c*** (500 pts)
 	- Page allocation (50 pts)
 	- Page deallocation (50 pts)
 	- Fork (100 pts)
 	- Copy-on-Write (150 pts)
-  - TLB (100 pts)
+  - TLB (150 pts)
 
 - Document: One PDF document (100 pts) including;
 	- Describe how you implement page allocation, deallocation, fork, copy-on-write, and TLB.

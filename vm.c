@@ -150,7 +150,6 @@ static bool __access_memory(unsigned int vpn, unsigned int rw)
 	unsigned int pfn;
 	int ret;
 	int nr_retries = 0;
-	bool from_tlb;
 
 	/* Cannot read and write at the same time!! */
 	assert((rw & RW_READ) ^ (rw & RW_WRITE));
@@ -163,13 +162,14 @@ static bool __access_memory(unsigned int vpn, unsigned int rw)
 	assert(vpn < NR_PTES_PER_PAGE * NR_PTES_PER_PAGE);
 
 	do {
+		bool from_tlb;
 		/* Ask MMU to translate VPN */
 		if (__translate(rw, vpn, &pfn, &from_tlb)) {
 			/* Success on address translation */
-      if (print_tlb_result) {
-        fprintf(stderr, "%c |", from_tlb ? 'o' : 'x');
-      }
-      fprintf(stderr, " %3u --> %-3u\n", vpn, pfn);
+			if (print_tlb_result) {
+				fprintf(stderr, "%c |", from_tlb ? 'o' : 'x');
+			}
+			fprintf(stderr, " %3u --> %-3u\n", vpn, pfn);
 			return true;
 		}
 
@@ -397,7 +397,7 @@ int main(int argc, char * argv[])
 			verbose = false;
 			break;
 		case 't':
-			print_tlb_result = false;
+			print_tlb_result = true;
 			break;
 		case 'h':
 		default:
