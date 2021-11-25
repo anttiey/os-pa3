@@ -30,6 +30,8 @@
 
 static bool verbose = true;
 
+static bool print_tlb_result = false;
+
 /**
  * Initial process
  */
@@ -164,7 +166,10 @@ static bool __access_memory(unsigned int vpn, unsigned int rw)
 		/* Ask MMU to translate VPN */
 		if (__translate(rw, vpn, &pfn, &from_tlb)) {
 			/* Success on address translation */
-			fprintf(stderr, "%c | %3u --> %-3u\n", from_tlb ? 'o' : 'x', vpn, pfn);
+      if (print_tlb_result) {
+        fprintf(stderr, "%c |", from_tlb ? 'o' : 'x');
+      }
+      fprintf(stderr, " %3u --> %-3u\n", vpn, pfn);
 			return true;
 		}
 
@@ -386,10 +391,13 @@ int main(int argc, char * argv[])
 	int opt;
 	FILE *input = stdin;
 
-	while ((opt = getopt(argc, argv, "qh")) != -1) {
+	while ((opt = getopt(argc, argv, "qht")) != -1) {
 		switch (opt) {
 		case 'q':
 			verbose = false;
+			break;
+		case 't':
+			print_tlb_result = false;
 			break;
 		case 'h':
 		default:
