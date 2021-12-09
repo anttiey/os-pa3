@@ -106,11 +106,11 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 {
 	// NR_PTES_PER_PAGE = 16;
 	// vpn = virtual page number, pfn = page frame number
-	
-	int pfn;
 
 	int outIndex = vpn / NR_PTES_PER_PAGE;
 	int inIndex = vpn % NR_PTES_PER_PAGE;
+
+	int pfn;
 
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
 		current->pagetable.outer_ptes[outIndex] = (struct pte_directory *)malloc(sizeof(struct pte_directory));
@@ -155,17 +155,21 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
  */
 void free_page(unsigned int vpn)
 {
+
 	int outIndex = vpn / NR_PTES_PER_PAGE;
 	int inIndex = vpn % NR_PTES_PER_PAGE;
 
 	int pfn = current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn;
 
-	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = false;
-	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
-	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = 0;
-	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 0;
+	if(mapcounts[pfn] < 2) {
 
-	mapcounts[pfn]--;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = false;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = 0;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 0;
+
+		mapcounts[pfn]--;
+	}
 
 }
 
@@ -188,7 +192,33 @@ void free_page(unsigned int vpn)
  */
 bool handle_page_fault(unsigned int vpn, unsigned int rw)
 {
+
+	int outIndex = vpn / NR_PTES_PER_PAGE;
+	int inIndex = vpn % NR_PTES_PER_PAGE;
+	
+	// page directory is invalid
+	if(current->pagetable.outer_ptes[outIndex] == NULL) {
+		current->pagetable.outer_ptes[outIndex] = (struct pte_directory *)malloc(sizeof(struct pte_directory));
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = alloc_page(vpn, rw);
+		return true;
+	}
+
+	// pte is invalid
+	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = alloc_page(vpn, rw);
+		return true;
+	}
+
+	// pte is not writable but @rw is for write
+	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false && rw == RW_WRITE) {
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = alloc_page(vpn, rw);
+		return true;
+	}
+
 	return false;
+
 }
 
 
@@ -212,5 +242,6 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
  */
 void switch_process(unsigned int pid)
 {
+	
 }
 
