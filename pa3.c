@@ -66,6 +66,9 @@ extern unsigned int mapcounts[];
  */
 bool lookup_tlb(unsigned int vpn, unsigned int *pfn)
 {
+	
+	return true;
+	
 	return false;
 }
 
@@ -101,7 +104,43 @@ void insert_tlb(unsigned int vpn, unsigned int pfn)
  */
 unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 {
-	return -1;
+	// NR_PTES_PER_PAGE = 16;
+	// vpn = virtual page number, pfn = page frame number
+	
+	int pfn;
+
+	int outIndex = vpn / NR_PTES_PER_PAGE;
+	int inIndex = vpn % NR_PTES_PER_PAGE;
+
+	if(current->pagetable.outer_ptes[outIndex] == NULL) {
+		current->pagetable.outer_ptes[outIndex] = (struct pte_directory *)malloc(sizeof(struct pte_directory));
+	}
+
+	for(int i = 0; i < NR_PAGEFRAMES; i++) {
+		pfn = i;
+		if(mapcounts[i] == 0) {
+			break;
+		}
+	}
+
+	if(mapcounts[pfn] == 16) {
+		return -1;
+	}
+
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = pfn;
+
+	if (rw = RW_READ) {
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
+	}
+	else if (rw = RW_WRITE) {
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+	}
+
+	mapcounts[pfn]++;
+
+	return pfn;
+
 }
 
 
@@ -116,6 +155,18 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
  */
 void free_page(unsigned int vpn)
 {
+	int outIndex = vpn / NR_PTES_PER_PAGE;
+	int inIndex = vpn % NR_PTES_PER_PAGE;
+
+	int pfn = current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn;
+
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = false;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = 0;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 0;
+
+	mapcounts[pfn]--;
+
 }
 
 
