@@ -267,7 +267,7 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
 			mapcounts[pfn]--;
 			alloc_page(vpn, rw);
-			
+
 		}
 
 		return true;
@@ -281,16 +281,16 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 		if(mapcounts[pfn] == 1) {
 
 			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-			return true;
 			
 		} else {
 
 			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
 			mapcounts[pfn]--;
 			alloc_page(vpn, rw);
-			return true;
 
 		}
+
+		return true;
 
 	}
 
