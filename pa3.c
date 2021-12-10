@@ -133,10 +133,10 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = pfn;
-	// current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw; // protection
 
 	if(rw & RW_WRITE) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw;
 	}
 
 	mapcounts[pfn]++;
@@ -197,22 +197,20 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	
 	// page directory is invalid
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
-		current->pagetable.outer_ptes[outIndex] = (struct pte_directory *)malloc(sizeof(struct pte_directory));
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = alloc_page(vpn, rw);
+		alloc_page(vpn, rw);
 		return true;
 	}
 
-	// pte is invalid
+	// pte is invalid 
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = alloc_page(vpn, rw);
+		alloc_page(vpn, rw);
 		return true;
 	}
 
 	// pte is not writable but @rw is for write
-	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false && rw == RW_WRITE) {
+	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && ((rw & RW_WRITE) == 1)) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = alloc_page(vpn, rw);
 		return true;
 	}
 
@@ -241,6 +239,87 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
  */
 void switch_process(unsigned int pid)
 {
+
+	struct process *temp = NULL;
+	struct process *child = NULL;
+
+	bool isNot = false;
+
+	list_for_each_entry(temp, &processes, list) {
+		if(temp->pid == pid) {
+			isNot = true;
+			break;
+		}
+	}
+
+	// Switch the process
+
+	/* 	1.	The @current process at the moment should be put into the @processes list
+		2.	@current should be replaced to the requested process.
+		3.	the next process is unlinked from the @processes
+		4.	@ptbr is set properly.
+	*/
+
+	if(isNot == true) {
+
+		list_add_tail(&current->list, &processes);
+		current = temp;
+
+	}
+	else {
 	
+	// Fork a process
+
+	/* 	1. 	This implies the forked child process should have the 
+			identical page table entry 'values' to its parent's (i.e., @current) page table. 
+		2.	To implement the copy-on-write feature, you should manipulate the writable
+ 			bit in PTE and mapcounts for shared pages.
+		3.	To implement the copy-on-write feature, you should manipulate the writable
+ 			bit in PTE and mapcounts for shared pages.
+	*/
+
+		child = (struct process *)malloc(sizeof(struct process));
+		child->pid = pid;
+
+		for(int i; i < NR_PTES_PER_PAGE; i++) {
+
+			if(current->pagetable.outer_ptes[i] != NULL) {
+
+				child->pagetable.outer_ptes[i] == (struct pte_directory *)malloc(sizeof(struct pte_directory));
+
+				for(int j; j < NR_PTES_PER_PAGE; j++) {
+
+					if(current->pagetable.outer_ptes[i]->ptes[j].valid == true) {
+
+						child->pagetable.outer_ptes[i]->ptes[j] = current->pagetable.outer_ptes[i]->ptes[j];
+
+						/* child->pagetable.outer_ptes[i]->ptes[j].valid = current->pagetable.outer_ptes[i]->ptes[j].valid;
+						child->pagetable.outer_ptes[i]->ptes[j].writable = current->pagetable.outer_ptes[i]->ptes[j].writable;
+						child->pagetable.outer_ptes[i]->ptes[j].pfn = current->pagetable.outer_ptes[i]->ptes[j].pfn;
+						child->pagetable.outer_ptes[i]->ptes[j].private = current->pagetable.outer_ptes[i]->ptes[j].private; */
+
+						if(current->pagetable.outer_ptes[i]->ptes[j].writable == true) {
+							current->pagetable.outer_ptes[i]->ptes[j].writable == false;
+							child->pagetable.outer_ptes[i]->ptes[j].writable == false;
+						}
+
+						mapcounts[current->pagetable.outer_ptes[i]->ptes[j].pfn]++;
+
+					}
+
+				}
+
+			}
+
+		}
+
+		list_add_tail(&current->list, &processes);
+		current = child;
+
+	}
+
+	list_del_init(&current->list);
+	ptbr = &current->pagetable;
+
 }
 
