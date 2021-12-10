@@ -101,7 +101,7 @@ static bool __translate(unsigned int rw, unsigned int vpn, unsigned int *pfn, bo
 	struct pte *pte;
 
 	/* Lookup the mapping from TLB */
-	if (lookup_tlb(vpn, pfn)) {
+	if (print_tlb_result && lookup_tlb(vpn, pfn)) {
 		*from_tlb = true;
 		return true;
 	}
@@ -129,7 +129,9 @@ static bool __translate(unsigned int rw, unsigned int vpn, unsigned int *pfn, bo
 	*pfn = pte->pfn;
 
 	/* Insert the mapping into TLB */
-	insert_tlb(vpn, *pfn);
+	if (print_tlb_result) {
+		insert_tlb(vpn, *pfn);
+	}
 
 	return true;
 }
