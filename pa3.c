@@ -171,10 +171,12 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = pfn;
-	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw;
 
-	if(rw == 2 || rw == 3) {
+	if(rw == 1) {
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 1;
+	} else {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 3;
 	}
 
 	// printf("rw == %d\n", rw);
@@ -240,22 +242,22 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	
 	// page directory is invalid
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
-		//alloc_page(vpn, rw);
+		alloc_page(vpn, rw);
 		return true;
 	}
 
 	// pte is invalid 
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
-		// alloc_page(vpn, current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private);
+		alloc_page(vpn, rw);
 		return true;
 	}
 
 	// pte is not writable but @rw is for write
 	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
-		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 3)) {
+		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private != 1)) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		alloc_page(vpn, current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private);
+		alloc_page(vpn, rw);
 		return true;
 	}
 
