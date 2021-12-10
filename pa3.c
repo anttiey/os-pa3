@@ -206,12 +206,12 @@ void free_page(unsigned int vpn)
 
 	int pfn = current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn;
 
+	mapcounts[pfn]--;
+
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = false;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = 0;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 0;
-
-	mapcounts[pfn]--;
 
 	free_tlb(vpn);
 
@@ -242,23 +242,38 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	
 	// page directory is invalid
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
-		alloc_page(vpn, rw);
-		return true;
+		return false;
 	}
+
+	int pfn = current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn;
 
 	// pte is invalid 
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+		mapcounts[pfn]--;
 		alloc_page(vpn, rw);
 		return true;
 	}
 
 	// pte is not writable but @rw is for write
+
 	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
-		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private != 1)) {
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		alloc_page(vpn, rw);
-		return true;
+		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 3)) {
+
+		if(mapcounts[pfn] == 1) {
+
+			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+			return true;
+			
+		} else {
+
+			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+			mapcounts[pfn]--;
+			alloc_page(vpn, rw);
+			return true;
+
+		}
+
 	}
 
 	// printf("rw == %d\n", rw);
@@ -319,6 +334,8 @@ void switch_process(unsigned int pid)
 		list_del_init(&current->list);
 		ptbr = &current->pagetable;
 
+		printf("%d\n", current->pid);
+
 	} else {
 	
 	// Fork a process
@@ -353,7 +370,7 @@ void switch_process(unsigned int pid)
 					child->pagetable.outer_ptes[i]->ptes[j].writable = false;
 				}
 
-				mapcounts[current->pagetable.outer_ptes[i]->ptes[j].pfn]++;
+				mapcounts[child->pagetable.outer_ptes[i]->ptes[j].pfn]++;
 
 			}
 
@@ -361,6 +378,7 @@ void switch_process(unsigned int pid)
 
 		list_add_tail(&current->list, &processes);
 		child->pid = pid;
+
 		current = child;
 		ptbr = &child->pagetable;
 
