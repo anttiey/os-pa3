@@ -159,17 +159,14 @@ void flush_tlb() {
  */
 unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 {
-	// NR_PTES_PER_PAGE = 16;
-	// vpn = virtual page number, pfn = page frame number
-
 	int outIndex = vpn / NR_PTES_PER_PAGE;
 	int inIndex = vpn % NR_PTES_PER_PAGE;
-
-	int pfn;
 
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
 		current->pagetable.outer_ptes[outIndex] = (struct pte_directory *)malloc(sizeof(struct pte_directory));
 	}
+
+	int pfn;
 
 	for(int i = 0; i < NR_PAGEFRAMES; i++) {
 		pfn = i;
@@ -192,9 +189,6 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 3;
 	}
-
-	// printf("rw == %d\n", rw);
-	// printf("rw & RW_WRITE == %d\n", (rw & RW_WRITE));
 
 	mapcounts[pfn]++;
 
@@ -263,9 +257,15 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 
 	// pte is invalid 
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
-		mapcounts[pfn]--;
-		alloc_page(vpn, rw);
+
+		if(mapcounts[pfn] == 1) {
+			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+		} else {
+			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+			mapcounts[pfn]--;
+			alloc_page(vpn, rw);
+		}
+
 		return true;
 	}
 
@@ -274,23 +274,10 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
 		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 3)) {
 
-		if(mapcounts[pfn] == 1) {
-
-			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-			return true;
-			
-		} else {
-
-			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-			mapcounts[pfn]--;
-			alloc_page(vpn, rw);
-			return true;
-
-		}
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+		return true;
 
 	}
-
-	// printf("rw == %d\n", rw);
 
 	return false;
 
@@ -332,8 +319,6 @@ void switch_process(unsigned int pid)
 		}
 	}
 
-	printf("Exist?: %d\n", isExist);
-
 	// Switch the process
 
 	/* 	1.	The @current process at the moment should be put into the @processes list
@@ -349,8 +334,6 @@ void switch_process(unsigned int pid)
 
 		list_del_init(&current->list);
 		ptbr = &current->pagetable;
-
-		printf("%d\n", current->pid);
 
 	} else {
 	
@@ -396,7 +379,7 @@ void switch_process(unsigned int pid)
 		child->pid = pid;
 
 		current = child;
-		ptbr = &child->pagetable;
+		ptbr = &current->pagetable;
 
 	}
 }
