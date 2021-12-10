@@ -131,13 +131,11 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 	}
 
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = pfn;
-	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw; // protection
+	// current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw; // protection
 
-	if (rw == RW_READ) {
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
-	}
-	else if (rw == RW_WRITE) {
+	if(rw & RW_WRITE) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
 	}
 
