@@ -70,9 +70,19 @@ extern unsigned int mapcounts[];
 bool lookup_tlb(unsigned int vpn, unsigned int *pfn)
 {
 	
-	return true;
+	for(int i=0; i < NR_TLB_ENTRIES; i++) {
+		struct tlb_entry *t = &tlb[i];
+
+		if (!t->valid) continue;
+
+		if (t->vpn == vpn) {
+			*pfn = t->vpn;
+			return true;
+		}
+	}
 	
 	return false;
+
 }
 
 
@@ -86,6 +96,18 @@ bool lookup_tlb(unsigned int vpn, unsigned int *pfn)
  */
 void insert_tlb(unsigned int vpn, unsigned int pfn)
 {
+	for(int i=0; i < NR_TLB_ENTRIES; i++) {
+
+		struct tlb_entry *t = &tlb[i];
+
+		if (!t->valid) {
+			t->valid = true;
+			t->vpn = vpn;
+			t->pfn = pfn;
+			return;
+		}
+
+	}
 }
 
 
@@ -264,6 +286,8 @@ void switch_process(unsigned int pid)
 
 		list_add_tail(&current->list, &processes);
 		current = temp;
+		list_del_init(&current->list);
+		ptbr = &current->pagetable;
 
 	}
 	else {
@@ -279,7 +303,6 @@ void switch_process(unsigned int pid)
 	*/
 
 		child = (struct process *)malloc(sizeof(struct process));
-		child->pid = pid;
 
 		for(int i; i < NR_PTES_PER_PAGE; i++) {
 
@@ -291,12 +314,10 @@ void switch_process(unsigned int pid)
 
 					if(current->pagetable.outer_ptes[i]->ptes[j].valid == true) {
 
-						child->pagetable.outer_ptes[i]->ptes[j] = current->pagetable.outer_ptes[i]->ptes[j];
-
-						/* child->pagetable.outer_ptes[i]->ptes[j].valid = current->pagetable.outer_ptes[i]->ptes[j].valid;
+						child->pagetable.outer_ptes[i]->ptes[j].valid = current->pagetable.outer_ptes[i]->ptes[j].valid;
 						child->pagetable.outer_ptes[i]->ptes[j].writable = current->pagetable.outer_ptes[i]->ptes[j].writable;
 						child->pagetable.outer_ptes[i]->ptes[j].pfn = current->pagetable.outer_ptes[i]->ptes[j].pfn;
-						child->pagetable.outer_ptes[i]->ptes[j].private = current->pagetable.outer_ptes[i]->ptes[j].private; */
+						child->pagetable.outer_ptes[i]->ptes[j].private = current->pagetable.outer_ptes[i]->ptes[j].private;
 
 						if(current->pagetable.outer_ptes[i]->ptes[j].writable == true) {
 							current->pagetable.outer_ptes[i]->ptes[j].writable == false;
@@ -313,13 +334,13 @@ void switch_process(unsigned int pid)
 
 		}
 
+		child->pid = pid;
+
 		list_add_tail(&current->list, &processes);
 		current = child;
+		ptbr = &current->pagetable;
 
 	}
-
-	list_del_init(&current->list);
-	ptbr = &current->pagetable;
 
 }
 
