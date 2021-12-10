@@ -259,11 +259,15 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
 
 		if(mapcounts[pfn] == 1) {
+
 			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+
 		} else {
+
 			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
 			mapcounts[pfn]--;
 			alloc_page(vpn, rw);
+			
 		}
 
 		return true;
@@ -274,8 +278,19 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
 		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 3)) {
 
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		return true;
+		if(mapcounts[pfn] == 1) {
+
+			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+			return true;
+			
+		} else {
+
+			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+			mapcounts[pfn]--;
+			alloc_page(vpn, rw);
+			return true;
+
+		}
 
 	}
 
