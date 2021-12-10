@@ -240,14 +240,14 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	
 	// page directory is invalid
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
-		alloc_page(vpn, rw);
+		//alloc_page(vpn, rw);
 		return true;
 	}
 
 	// pte is invalid 
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
-		alloc_page(vpn, rw);
+		// alloc_page(vpn, current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private);
 		return true;
 	}
 
@@ -255,7 +255,7 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
 		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 3)) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		alloc_page(vpn, rw);
+		alloc_page(vpn, current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private);
 		return true;
 	}
 
@@ -347,7 +347,7 @@ void switch_process(unsigned int pid)
 				child->pagetable.outer_ptes[i]->ptes[j].private = current->pagetable.outer_ptes[i]->ptes[j].private;
 
 				if(current->pagetable.outer_ptes[i]->ptes[j].private == 3) {
-					current->pagetable.outer_ptes[i]->ptes[j].writable == false;
+					current->pagetable.outer_ptes[i]->ptes[j].writable = false;
 					child->pagetable.outer_ptes[i]->ptes[j].writable = false;
 				}
 
