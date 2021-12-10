@@ -155,11 +155,14 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = pfn;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw;
 
-	if(rw & RW_WRITE) {
+	if(rw == 2 || rw == 3) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw;
 	}
+
+	// printf("rw == %d\n", rw);
+	// printf("rw & RW_WRITE == %d\n", (rw & RW_WRITE));
 
 	mapcounts[pfn]++;
 
@@ -219,28 +222,26 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	
 	// page directory is invalid
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
-		return false;
+		alloc_page(vpn, rw);
+		return true;
 	}
 
-	// pte is invalid
+	// pte is invalid 
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
-		return false;
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
+		alloc_page(vpn, rw);
+		return true;
 	}
 
 	// pte is not writable but @rw is for write
-	if (rw != RW_READ) {
-		int pfn = ptbr->outer_ptes[outIndex]->ptes[inIndex].pfn;
-
-		if (mapcounts[pfn] > 1){
-			mapcounts[pfn]--;
-			alloc_page(vpn, rw);
-    	}
-		else {
-			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		}
-
+	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
+		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 2)) {
+		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+		// alloc_page(vpn, rw);
 		return true;
 	}
+
+	printf("rw == %d\n", rw);
 
 	return false;
 
@@ -271,11 +272,11 @@ void switch_process(unsigned int pid)
 	struct process *temp = NULL;
 	struct process *child = NULL;
 
-	bool isNot = false;
+	bool exist = false;
 
 	list_for_each_entry(temp, &processes, list) {
 		if(temp->pid == pid) {
-			isNot = true;
+			exist = true;
 			break;
 		}
 	}
@@ -288,10 +289,11 @@ void switch_process(unsigned int pid)
 		4.	@ptbr is set properly.
 	*/
 
-	if(isNot == true) {
+	if(exist == true) {
 
 		list_add_tail(&current->list, &processes);
 		current = temp;
+
 		list_del_init(&current->list);
 		ptbr = &current->pagetable;
 
@@ -309,6 +311,7 @@ void switch_process(unsigned int pid)
 	*/
 
 		child = (struct process *)malloc(sizeof(struct process));
+		child->pid = pid;
 
 		for(int i; i < NR_PTES_PER_PAGE; i++) {
 
@@ -320,10 +323,7 @@ void switch_process(unsigned int pid)
 
 					if(current->pagetable.outer_ptes[i]->ptes[j].valid == true) {
 
-						child->pagetable.outer_ptes[i]->ptes[j].valid = current->pagetable.outer_ptes[i]->ptes[j].valid;
-						child->pagetable.outer_ptes[i]->ptes[j].writable = current->pagetable.outer_ptes[i]->ptes[j].writable;
-						child->pagetable.outer_ptes[i]->ptes[j].pfn = current->pagetable.outer_ptes[i]->ptes[j].pfn;
-						child->pagetable.outer_ptes[i]->ptes[j].private = current->pagetable.outer_ptes[i]->ptes[j].private;
+						child->pagetable.outer_ptes[i]->ptes[j] = current->pagetable.outer_ptes[i]->ptes[j];
 
 						if(current->pagetable.outer_ptes[i]->ptes[j].writable == true) {
 							current->pagetable.outer_ptes[i]->ptes[j].writable == false;
@@ -340,10 +340,9 @@ void switch_process(unsigned int pid)
 
 		}
 
-		child->pid = pid;
-
 		list_add_tail(&current->list, &processes);
 		current = child;
+
 		ptbr = &current->pagetable;
 
 	}
