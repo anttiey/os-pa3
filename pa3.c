@@ -253,13 +253,13 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 
 	// pte is not writable but @rw is for write
 	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
-		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 2)) {
+		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 3)) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
 		// alloc_page(vpn, rw);
 		return true;
 	}
 
-	printf("rw == %d\n", rw);
+	// printf("rw == %d\n", rw);
 
 	return false;
 
@@ -290,14 +290,16 @@ void switch_process(unsigned int pid)
 	struct process *temp = NULL;
 	struct process *child = NULL;
 
-	bool exist = false;
+	bool isExist = false;
 
 	list_for_each_entry(temp, &processes, list) {
 		if(temp->pid == pid) {
-			exist = true;
+			isExist = true;
 			break;
 		}
 	}
+
+	printf("Exist?: %d\n", isExist);
 
 	// Switch the process
 
@@ -307,7 +309,7 @@ void switch_process(unsigned int pid)
 		4.	@ptbr is set properly.
 	*/
 
-	if(exist == true) {
+	if(isExist == true) {
 
 		list_add_tail(&current->list, &processes);
 		current = temp;
@@ -315,8 +317,7 @@ void switch_process(unsigned int pid)
 		list_del_init(&current->list);
 		ptbr = &current->pagetable;
 
-	}
-	else {
+	} else {
 	
 	// Fork a process
 
@@ -329,41 +330,38 @@ void switch_process(unsigned int pid)
 	*/
 
 		child = (struct process *)malloc(sizeof(struct process));
-		child->pid = pid;
 
-		for(int i; i < NR_PTES_PER_PAGE; i++) {
+		for(int i = 0; i < NR_PTES_PER_PAGE; i++) {
 
-			if(current->pagetable.outer_ptes[i] != NULL) {
+			if(current->pagetable.outer_ptes[i] == NULL) continue;
 
-				child->pagetable.outer_ptes[i] == (struct pte_directory *)malloc(sizeof(struct pte_directory));
+			child->pagetable.outer_ptes[i] = (struct pte_directory *)malloc(sizeof(struct pte_directory));
 
-				for(int j; j < NR_PTES_PER_PAGE; j++) {
+			for(int j = 0; j < NR_PTES_PER_PAGE; j++) {
 
-					if(current->pagetable.outer_ptes[i]->ptes[j].valid == true) {
+				if(current->pagetable.outer_ptes[i]->ptes[j].valid == false) continue;
 
-						child->pagetable.outer_ptes[i]->ptes[j] = current->pagetable.outer_ptes[i]->ptes[j];
+				child->pagetable.outer_ptes[i]->ptes[j].valid = current->pagetable.outer_ptes[i]->ptes[j].valid;
+				child->pagetable.outer_ptes[i]->ptes[j].writable = current->pagetable.outer_ptes[i]->ptes[j].writable;
+				child->pagetable.outer_ptes[i]->ptes[j].pfn = current->pagetable.outer_ptes[i]->ptes[j].pfn;
+				child->pagetable.outer_ptes[i]->ptes[j].private = current->pagetable.outer_ptes[i]->ptes[j].private;
 
-						if(current->pagetable.outer_ptes[i]->ptes[j].writable == true) {
-							current->pagetable.outer_ptes[i]->ptes[j].writable == false;
-							child->pagetable.outer_ptes[i]->ptes[j].writable == false;
-						}
-
-						mapcounts[current->pagetable.outer_ptes[i]->ptes[j].pfn]++;
-
-					}
-
+				if(current->pagetable.outer_ptes[i]->ptes[j].private == 3) {
+					current->pagetable.outer_ptes[i]->ptes[j].writable == false;
+					child->pagetable.outer_ptes[i]->ptes[j].writable = false;
 				}
+
+				mapcounts[current->pagetable.outer_ptes[i]->ptes[j].pfn]++;
 
 			}
 
 		}
 
 		list_add_tail(&current->list, &processes);
+		child->pid = pid;
 		current = child;
-
-		ptbr = &current->pagetable;
+		ptbr = &child->pagetable;
 
 	}
-
 }
 
