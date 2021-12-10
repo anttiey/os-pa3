@@ -219,20 +219,26 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	
 	// page directory is invalid
 	if(current->pagetable.outer_ptes[outIndex] == NULL) {
-		alloc_page(vpn, rw);
-		return true;
+		return false;
 	}
 
-	// pte is invalid 
+	// pte is invalid
 	if(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid == false) {
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
-		alloc_page(vpn, rw);
-		return true;
+		return false;
 	}
 
 	// pte is not writable but @rw is for write
-	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && ((rw & RW_WRITE) == 1)) {
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+	if (rw != RW_READ) {
+		int pfn = ptbr->outer_ptes[outIndex]->ptes[inIndex].pfn;
+
+		if (mapcounts[pfn] > 1){
+			mapcounts[pfn]--;
+			alloc_page(vpn, rw);
+    	}
+		else {
+			current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
+		}
+
 		return true;
 	}
 
