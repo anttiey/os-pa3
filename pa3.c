@@ -28,6 +28,9 @@ extern struct list_head processes;
 
 /**
  * Currently running process
+ * 
+ * 
+ * 
  */
 extern struct process *current;
 
@@ -129,11 +132,12 @@ unsigned int alloc_page(unsigned int vpn, unsigned int rw)
 
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = true;
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = pfn;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = rw; // protection
 
-	if (rw = RW_READ) {
+	if (rw == RW_READ) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
 	}
-	else if (rw = RW_WRITE) {
+	else if (rw == RW_WRITE) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
 	}
 
@@ -161,15 +165,12 @@ void free_page(unsigned int vpn)
 
 	int pfn = current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn;
 
-	if(mapcounts[pfn] < 2) {
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = false;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = 0;
+	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 0;
 
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].valid = false;
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = false;
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].pfn = 0;
-		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 0;
-
-		mapcounts[pfn]--;
-	}
+	mapcounts[pfn]--;
 
 }
 
