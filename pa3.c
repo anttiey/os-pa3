@@ -76,7 +76,7 @@ bool lookup_tlb(unsigned int vpn, unsigned int *pfn)
 		if (!t->valid) continue;
 
 		if (t->vpn == vpn) {
-			*pfn = t->vpn;
+			*pfn = t->pfn;
 			return true;
 		}
 	}
@@ -108,6 +108,22 @@ void insert_tlb(unsigned int vpn, unsigned int pfn)
 		}
 
 	}
+}
+
+void free_tlb(unsigned int vpn) {
+
+	for(int i=0; i < NR_TLB_ENTRIES; i++) {
+
+		struct tlb_entry *t = &tlb[i];
+
+		if (t->valid) {
+			if (t->vpn == vpn) {
+				t->valid = false;
+		 	}	
+		}
+
+	}
+
 }
 
 
@@ -194,6 +210,8 @@ void free_page(unsigned int vpn)
 	current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private = 0;
 
 	mapcounts[pfn]--;
+
+	free_tlb(vpn);
 
 }
 
