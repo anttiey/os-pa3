@@ -126,6 +126,20 @@ void free_tlb(unsigned int vpn) {
 
 }
 
+void flush_tlb() {
+
+	for(int i=0; i < NR_TLB_ENTRIES; i++) {
+
+		struct tlb_entry *t = &tlb[i];
+
+		if (t->valid) {
+			t->valid = false;
+		}
+
+	}
+
+}
+
 
 /**
  * alloc_page(@vpn, @rw)
@@ -308,6 +322,8 @@ void switch_process(unsigned int pid)
 	struct process *child = NULL;
 
 	bool isExist = false;
+
+	flush_tlb();
 
 	list_for_each_entry(temp, &processes, list) {
 		if(temp->pid == pid) {
