@@ -255,7 +255,7 @@ bool handle_page_fault(unsigned int vpn, unsigned int rw)
 	if((current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable == false) && 
 		(current->pagetable.outer_ptes[outIndex]->ptes[inIndex].private == 3)) {
 		current->pagetable.outer_ptes[outIndex]->ptes[inIndex].writable = true;
-		// alloc_page(vpn, rw);
+		alloc_page(vpn, rw);
 		return true;
 	}
 
